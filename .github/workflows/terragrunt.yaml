@@ -1,0 +1,73 @@
+name: "Terraform"
+
+on:
+  push:
+    branches:
+      - main
+      - '*'
+    paths:
+    - 'terraform/'
+    
+  pull_request:
+    branches:
+      - main
+    paths:
+    - 'terraform/'
+
+env:
+  TERRAFORM_VERSION: 1.2.6
+
+jobs:
+  terragrunt_plan_apply:
+    name: Terraform Plan and Apply
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Setup Varfiles
+        run: |
+          echo "export TERRAFORM_VARFILE=staging.tfvars" >> $GITHUB_ENV
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "export TERRAFORM_VARFILE=production.tfvars" >> $GITHUB_ENV
+          fi
+
+      - name: Terragrunt Init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Terragrunt Plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          cd terraform
+          terraform plan -var-file="./varfiles/${{ env.TERRAFORM_VARFILE }}"
+
+      - name: Terragrunt Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: |
+          cd terraform
+          terraform apply --auto-approve -var-file="./varfiles/${{ env.TERRAFORM_VARFILE }}"

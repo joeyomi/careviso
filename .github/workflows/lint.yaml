@@ -1,0 +1,51 @@
+name: "Lint"
+
+on:
+  push:
+    branches:
+      - main
+      - '*'
+  pull_request:
+    branches:
+      - main
+
+env:
+  TERRAFORM_VERSION: 1.2.6
+
+jobs:
+  lint:
+    name: Lint Code Base
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Run Checkov action #https://www.checkov.io/5.Policy%20Index/terraform.html
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12.2204.0
+        continue-on-error: true
+        with:
+          directory: .
+          skip_check: CKV_AWS_2
+          quiet: true # optional: display only failed checks
+
+  terraform_format_check:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0        
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -list=true -check=true -recursive
