@@ -1,0 +1,13 @@
+profile = "default"
+region  = "us-east-1"
+
+assume_role_arn         = "arn:aws:iam::1234567890:role/ci-runner"
+assume_role_external_id = "ci-runner"
+
+environment = "staging"
+prefix      = "careviso"
+
+create_route53_zone = true
+route53_zone_name   = "careviso.com"
+
+//slack_webhook_url = "https://hooks.slack.com/services/1245XXXXX"
